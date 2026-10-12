@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Smart Water Purifier Simulator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=Bitter:wght@600&display=swap">
+<style>
+:root{--bg:#f1f4f7;--panel:#fff;--ink:#14263a;--mute:#5d7084;--line:#d3dce5;--ok:#2b8a57;--warn:#c28a08;--bad:#c9432e;--accent:#1d5fa8;--band:#14263a;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1823;--panel:#16263a;--ink:#e4edf6;--mute:#93a7bc;--line:#28405a;--ok:#4cc184;--warn:#e0b13a;--bad:#ee7a63;--accent:#6aaef0;--band:#0a121b}}
+:root[data-theme="dark"]{--bg:#0e1823;--panel:#16263a;--ink:#e4edf6;--mute:#93a7bc;--line:#28405a;--ok:#4cc184;--warn:#e0b13a;--bad:#ee7a63;--accent:#6aaef0;--band:#0a121b}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif}
+h1,h2{font-family:Bitter,Georgia,serif;margin:0;font-weight:600}
+h1{font-size:1.45rem}h2{font-size:1.05rem}
+header{background:var(--band);color:#e8f0f8;padding:1rem clamp(1rem,4vw,2rem);display:flex;flex-wrap:wrap;gap:.75rem;justify-content:space-between;align-items:center}
+header p{margin:.15rem 0 0;color:#9fb4c9;font-size:.85rem}
+.ctrl{display:flex;flex-wrap:wrap;gap:.5rem}
+button{font:inherit;cursor:pointer;border-radius:6px;padding:.5rem .9rem;border:1px solid var(--accent);background:transparent;color:var(--accent);font-weight:600}
+header button{color:#e8f0f8;border-color:#5f84ad}
+button.pri{background:var(--bad);border-color:var(--bad);color:#fff}
+button[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+main{max-width:1150px;margin:auto;padding:1rem clamp(1rem,4vw,2rem);display:grid;gap:1rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1rem}
+.top{display:flex;justify-content:space-between;align-items:baseline}
+.name{color:var(--mute);font-size:.9rem}
+.val{font-family:Bitter,Georgia,serif;font-size:2rem;line-height:1.1}
+.val small{font-size:.9rem;color:var(--mute);font-family:"IBM Plex Sans",sans-serif}
+.chip{font-size:.8rem;font-weight:600;padding:.1rem .55rem;border-radius:99px;color:#fff}
+.l0{background:var(--ok)}.l1{background:var(--warn)}.l2{background:var(--bad)}
+.gauge{position:relative;height:10px;border-radius:5px;margin:.7rem 0 .4rem;opacity:.9}
+.mark{position:absolute;top:-4px;width:4px;height:18px;border-radius:2px;background:var(--ink);transform:translateX(-2px);transition:left .5s}
+svg.spark{width:100%;height:56px;display:block}
+.mid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:1rem}
+@media(max-width:760px){.mid{grid-template-columns:1fr}}
+.unit{display:flex;gap:1rem;align-items:center}
+.pump{width:84px;height:84px;flex:none}
+.pump .fan{transform-origin:42px 42px}
+.on .fan{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.on .fan{animation:none}}
+.state{font-family:Bitter,Georgia,serif;font-size:1.3rem}
+.sw{display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap}
+ul{list-style:none;margin:.5rem 0 0;padding:0;max-height:260px;overflow:auto;font-size:.88rem}
+li{padding:.3rem 0;border-bottom:1px solid var(--line);display:flex;gap:.6rem}
+li time{color:var(--mute);flex:none;font-variant-numeric:tabular-nums}
+.note{color:var(--mute);font-size:.8rem}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Smart Water Purifier Simulator</h1><p>Sensor readings, automatic pump control and an event log, running on simulated data.</p></div>
+  <div class="ctrl">
+    <button id="pause" type="button" aria-pressed="false">Pause</button>
+    <button id="spike" type="button" class="pri">Trigger pollution event</button>
+  </div>
+</header>
+<main>
+  <div class="grid" id="cards"></div>
+  <div class="mid">
+    <section class="card" aria-labelledby="h-u">
+      <h2 id="h-u">Purification unit</h2>
+      <div class="unit" id="unit">
+        <svg class="pump" viewBox="0 0 84 84" role="img" aria-label="Pump">
+          <circle cx="42" cy="42" r="38" fill="none" stroke="var(--line)" stroke-width="4"/>
+          <g class="fan"><path d="M42 42 L42 10 A32 32 0 0 1 70 26 Z M42 42 L70 58 A32 32 0 0 1 42 74 Z M42 42 L14 58 A32 32 0 0 1 14 26 Z" fill="var(--accent)" opacity=".85"/></g>
+          <circle cx="42" cy="42" r="6" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/>
+        </svg>
+        <div><div class="state" id="pstate">Pump off</div><div class="name" id="pwhy">Water is within safe limits.</div></div>
+      </div>
+      <div class="sw" role="group" aria-label="Control mode">
+        <button id="auto" type="button" aria-pressed="true">Automatic</button>
+        <button id="manual" type="button" aria-pressed="false">Manual</button>
+        <button id="tog" type="button" disabled>Turn pump on</button>
+      </div>
+      <p class="note">In automatic mode the relay switches the pump on when any reading is unsafe, and off once all readings are safe again.</p>
+    </section>
+    <section class="card" aria-labelledby="h-l">
+      <h2 id="h-l">Event log</h2>
+      <ul id="log" aria-live="polite"></ul>
+    </section>
+  </div>
+  <p class="note">Demo limits: pH 6.5–8.5, turbidity 1 NTU (watch) and 5 NTU (unsafe), TDS 500 mg/L (watch) and 2000 mg/L (unsafe). Check these against the current BIS IS 10500 standard before real use. All values are simulated.</p>
+</main>
+<script>
+var P=[
+{k:"ph",n:"pH",u:"",base:7.4,pol:5.6,min:4,max:10,noise:.03,d:2,f:function(v){return v<6.5||v>8.5?2:(v<6.8||v>8.2?1:0)}},
+{k:"tur",n:"Turbidity",u:"NTU",base:.8,pol:9,min:0,max:10,noise:.05,d:1,f:function(v){return v>5?2:(v>1?1:0)}},
+{k:"tds",n:"TDS",u:"mg/L",base:320,pol:2500,min:0,max:2600,noise:5,d:0,f:function(v){return v>2000?2:(v>500?1:0)}},
+{k:"temp",n:"Temperature",u:"°C",base:27,pol:30,min:15,max:40,noise:.08,d:1,f:function(v){return v>35?2:(v>32?1:0)}}];
+var V={},H={},LV={},pump=false,auto=true,paused=false,evt=0,LOG=[];
+P.forEach(function(p){V[p.k]=p.base;H[p.k]=[];LV[p.k]=0;for(var i=0;i<60;i++)H[p.k].push(p.base)});
+function $(i){return document.getElementById(i)}
+var NS="http://www.w3.org/2000/svg";
+function grad(p){var s=[],n=40,c=["var(--ok)","var(--warn)","var(--bad)"];
+  for(var i=0;i<n;i++){var v=p.min+(p.max-p.min)*(i+.5)/n;s.push(c[p.f(v)]+" "+(i/n*100)+"% "+((i+1)/n*100)+"%")}
+  return "linear-gradient(90deg,"+s.join(",")+")"}
+var cards="";
+P.forEach(function(p){cards+='<section class="card" aria-label="'+p.n+'"><div class="top"><span class="name">'+p.n+'</span><span class="chip l0" id="c-'+p.k+'">Safe</span></div><div class="val"><span id="v-'+p.k+'"></span> <small>'+p.u+'</small></div><div class="gauge" style="background:'+grad(p)+'"><div class="mark" id="m-'+p.k+'"></div></div><svg class="spark" viewBox="0 0 200 56" preserveAspectRatio="none" aria-hidden="true"><polyline id="s-'+p.k+'" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg></section>'});
+$("cards").innerHTML=cards;
+function log(t){LOG.unshift({t:new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"}),m:t});if(LOG.length>40)LOG.pop();
+  $("log").innerHTML=LOG.map(function(e){return "<li><time>"+e.t+"</time><span>"+e.m+"</span></li>"}).join("")}
+var NAMES=["Safe","Watch","Unsafe"];
+function tick(){
+  var worst=0;
+  P.forEach(function(p){
+    var v=V[p.k],tgt=p.base,rate=.03;
+    if(evt>0){tgt=p.pol;rate=p.k=="temp"?.05:.22}
+    if(pump&&evt==0){rate=.12}
+    v+=(tgt-v)*rate+(Math.random()-.5)*2*p.noise*(p.k=="tds"?1:1);
+    if(evt>0&&p.k=="tds")v+=0;
+    V[p.k]=Math.max(p.min,Math.min(p.max,v));
+    var h=H[p.k];h.push(V[p.k]);h.shift();
+  });
+  if(evt>0)evt--;
+  if(evt==0&&LOG.length&&LOG[0].m.indexOf("source stopped")<0&&window._ev){window._ev=false;log("Pollution source stopped. Readings will recover.")}
+  P.forEach(function(p){
+    var l=p.f(V[p.k]);worst=Math.max(worst,l);
+    if(l!=LV[p.k]){if(l==2)log(p.n+" "+V[p.k].toFixed(p.d)+" "+p.u+": unsafe");else if(l==0)log(p.n+" back to safe");LV[p.k]=l}
+  });
+  var any2=P.some(function(p){return LV[p.k]==2}),all0=P.every(function(p){return LV[p.k]==0});
+  if(auto){
+    if(!pump&&any2){pump=true;log("Relay closed: pump ON (automatic)")}
+    else if(pump&&all0){pump=false;log("All readings safe: pump OFF (automatic)")}
+  }
+  draw(worst)
+}
+function draw(worst){
+  P.forEach(function(p){
+    var v=V[p.k],l=LV[p.k];
+    $("v-"+p.k).textContent=v.toFixed(p.d);
+    var c=$("c-"+p.k);c.textContent=NAMES[l];c.className="chip l"+l;
+    $("m-"+p.k).style.left=((v-p.min)/(p.max-p.min)*100)+"%";
+    var pts=H[p.k].map(function(x,i){return (i/59*200).toFixed(1)+","+(54-(Math.max(p.min,Math.min(p.max,x))-p.min)/(p.max-p.min)*52).toFixed(1)}).join(" ");
+    $("s-"+p.k).setAttribute("points",pts);
+  });
+  $("unit").className="unit"+(pump?" on":"");
+  $("pstate").textContent=pump?"Pump running":"Pump off";
+  $("pwhy").textContent=pump?(auto?"Purifying: an unsafe reading was detected.":"Running by manual control."):(worst==2?"Unsafe reading, but manual mode is on.":"Water is within safe limits.");
+  $("tog").textContent=pump?"Turn pump off":"Turn pump on";
+}
+function setMode(a){auto=a;$("auto").setAttribute("aria-pressed",a);$("manual").setAttribute("aria-pressed",!a);$("tog").disabled=a;log(a?"Mode: automatic":"Mode: manual");draw(Math.max.apply(null,P.map(function(p){return LV[p.k]})))}
+$("auto").onclick=function(){setMode(true)};
+$("manual").onclick=function(){setMode(false)};
+$("tog").onclick=function(){pump=!pump;log("Pump "+(pump?"ON":"OFF")+" (manual)");draw(0)};
+$("spike").onclick=function(){evt=7;window._ev=true;log("Pollution event started (simulated runoff)")};
+$("pause").onclick=function(){paused=!paused;this.setAttribute("aria-pressed",paused);this.textContent=paused?"Resume":"Pause"};
+log("Simulation started. Pump on automatic.");
+draw(0);
+setInterval(function(){if(!paused)tick()},1000);
+</script>
+</body>
+</html>
